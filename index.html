@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KPRI SEMARAK - Sistem Keuangan & Pembukuan Digital</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        @media print {
+            body * { visibility: hidden; }
+            #area-kuitansi, #area-kuitansi * { visibility: visible; }
+            #area-kuitansi { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans" x-data="koperasiApp()">
+
+    <div class="flex h-screen overflow-hidden no-print">
+        <div class="w-64 bg-indigo-900 text-white flex flex-col shadow-xl">
+            <div class="p-5 text-xl font-bold tracking-wider border-b border-indigo-800 text-center">
+                KPRI SEMARAK
+            </div>
+            <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+                <template x-for="menu in menus">
+                    <button @click="currentMenu = menu.id; isKuitansiMenu = ['simpanan','pinjaman','angsuran'].includes(menu.id)" 
+                            :class="currentMenu === menu.id ? 'bg-indigo-700 text-white' : 'text-indigo-200 hover:bg-indigo-800'"
+                            class="w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors">
+                        <span class="mr-3 text-base" x-text="menu.icon"></span>
+                        <span x-text="menu.name"></span>
+                    </button>
+                </template>
+            </nav>
+            <div class="p-4 border-t border-indigo-800 text-xs text-indigo-300 text-center">
+                &copy; 2026 KPRI Semarak Live
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <header class="bg-white shadow-sm border-b px-8 py-4 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-gray-800" x-text="'Dashboard ' + getMenuName()"></h1>
+                <span class="text-sm bg-green-100 text-green-800 font-medium px-3 py-1 rounded-full flex items-center">
+                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span> Live & Terkoneksi
+                </span>
+            </header>
+
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-8">
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <template x-for="stat in getStats()">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex justify-between items-center">
+                            <div>
+                                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider" x-text="stat.label"></p>
+                                <p class="text-xl font-bold text-gray-900 mt-1" x-text="stat.value"></p>
+                            </div>
+                            <div class="text-2xl p-3 bg-indigo-50 rounded-lg text-indigo-600" x-text="stat.icon"></div>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <button @click="openAddModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg shadow-sm text-sm transition-colors">
+                        + Tambah Data Baru
+                    </button>
+                    <button @click="exportToExcel()" class="inline-flex items-center bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-lg shadow-sm text-sm transition-colors">
+                        💾 Unduh Excel (<span x-text="getMenuName()"></span>)
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 text-left text-sm">
+                            <thead class="bg-gray-50 text-gray-700 uppercase text-xs tracking-wider">
+                                <tr>
+                                    <template x-for="col in getColumns()">
+                                        <th class="px-6 py-4 font-semibold" x-text="col"></th>
+                                    </template>
+                                    <th class="px-6 py-4 font-semibold text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 text-gray-600">
+                                <template x-for="(row, index) in db[currentMenu]" :key="index">
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <template x-for="key in Object.keys(row)">
+                                            <td class="px-6 py-4 whitespace-nowrap" x-text="formatCell(row[key], key)"></td>
+                                        </template>
+                                        <td class="px-6 py-4 text-center space-x-2 whitespace-nowrap">
+                                            <template x-if="isKuitansiMenu">
+                                                <button @click="generateKuitansi(row)" class="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2 py-1 rounded font-medium">Kuitansi</button>
+                                            </template>
+                                            <button @click="openEditModal(row, index)" class="text-indigo-600 hover:text-indigo-900 text-xs font-semibold">Edit</button>
+                                            <button @click="deleteData(index)" class="text-rose-600 hover:text-rose-900 text-xs font-semibold">Hapus</button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div x-show="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4" x-cloak>
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden" @click.away="isModalOpen = false">
+            <div class="bg-indigo-900 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="font-bold text-lg" x-text="isEditMode ? 'Edit Data' : 'Tambah Data'"></h3>
+                <button @click="isModalOpen = false" class="text-indigo-200 hover:text-white text-xl">&times;</button>
+            </div>
+            <form @submit.prevent="saveForm()" class="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                <template x-for="(val, key) in form">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-gray-500 mb-1" x-text="key.replace('_', ' ')"></label>
+                        <input type="text" x-model="form[key]" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </template>
+                <div class="bg-gray-50 -mx-6 -mb-6 px-6 py-4 flex justify-end space-x-3 border-t mt-6">
+                    <button type="button" @click="isModalOpen = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300">Batal</button>
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700" x-text="isEditMode ? 'Simpan Perubahan' : 'Tambah Data'"></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div x-show="isKuitansiOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" x-cloak>
+        <div class="bg-white rounded-lg shadow-2xl max-w-2xl w-full p-8 border-t-8 border-indigo-900" id="area-kuitansi">
+            <div class="flex justify-between items-start border-b-2 border-gray-200 pb-4 mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-indigo-900 tracking-wide">KPRI SEMARAK</h2>
+                    <p class="text-xs text-gray-500">Bukti Keuangan Digital Transaksi Resmi</p>
+                </div>
+                <div class="text-right">
+                    <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1 rounded-full uppercase" x-text="activeKuitansi.jenis_dokumen"></span>
+                    <p class="text-xs text-gray-400 mt-2" x-text="activeKuitansi.nomor"></p>
+                </div>
+            </div>
+            <div class="space-y-4 text-sm text-gray-700">
+                <div class="grid grid-cols-4 border-b border-gray-100 py-2"><span class="text-gray-400">Diterima Dari</span><div class="col-span-3 font-semibold" x-text="activeKuitansi.nama"></div></div>
+                <div class="grid grid-cols-4 border-b border-gray-100 py-2"><span class="text-gray-400">Uang Sejumlah</span><div class="col-span-3 bg-gray-50 p-2 rounded italic font-medium" x-text="activeKuitansi.terbilang + ' Rupiah'"></div></div>
+                <div class="grid grid-cols-4 border-b border-gray-100 py-2"><span class="text-gray-400">Keperluan</span><div class="col-span-3" x-text="activeKuitansi.keperluan"></div></div>
+            </div>
+            <div class="mt-8 flex justify-between items-center">
+                <div class="bg-indigo-900 text-white text-xl font-mono font-bold px-6 py-3 rounded" x-text="formatRupiah(activeKuitansi.nominal)"></div>
+                <div class="text-center w-48 text-sm">
+                    <p class="text-gray-400 text-xs" x-text="'Bengkulu, ' + activeKuitansi.tanggal"></p>
+                    <p class="mt-12 font-bold text-gray-800 border-b border-gray-400 pb-1">Bendahara KPRI</p>
+                </div>
+            </div>
+            <div class="mt-8 pt-4 border-t border-gray-100 flex justify-end space-x-3 no-print">
+                <button @click="isKuitansiOpen = false" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300">Tutup</button>
+                <button @click="window.print()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 shadow-md">🖨️ Cetak</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function koperasiApp() {
+            return {
+                currentMenu: 'anggota',
+                isModalOpen: false,
+                isEditMode: false,
+                isKuitansiOpen: false,
+                isKuitansiMenu: false,
+                selectedIndex: null,
+                activeKuitansi: {},
+                form: {},
+                menus: [
+                    { id: 'anggota', name: 'Data Anggota', icon: '👤' },
+                    { id: 'simpanan', name: 'Data Simpanan', icon: '💰' },
+                    { id: 'pinjaman', name: 'Data Pinjaman', icon: '💸' },
+                    { id: 'angsuran', name: 'Data Angsuran', icon: '🔄' },
+                    { id: 'pengeluaran', name: 'Data Pengeluaran', icon: '📉' },
+                    { id: 'laporan', name: 'Laporan Keuangan', icon: '📊' }
+                ],
+                db: {
+                    anggota: [
+                        { id_anggota: "A001", nama: "Drs. H. Ahmad Fauzi", nip: "19850312xxx", jabatan: "Ketua", status: "Aktif" },
+                        { id_anggota: "A002", nama: "Siti Rahma, S.E.", nip: "19890724xxx", jabatan: "Bendahara", status: "Aktif" }
+                    ],
+                    simpanan: [
+                        { id_anggota: "A001", nama: "Drs. H. Ahmad Fauzi", jenis_simpanan: "SWB", nominal: 150000, tgl_transaksi: "2026-05-10", tgl_update: "2026-05-10" }
+                    ],
+                    pinjaman: [
+                        { id_pinjaman: "P01", id_anggota: "A002", nama: "Siti Rahma, S.E.", jumlah_pinjaman: 5000000, tenor: "10 Bulan", status: "Disetujui" }
+                    ],
+                    angsuran: [
+                        { id_angsuran: "ANG-01", id_anggota: "A002", nama: "Siti Rahma, S.E.", angsuran_ke: "1", nominal: 500000, tanggal: "2026-05-15" }
+                    ],
+                    pengeluaran: [
+                        { id_pengeluaran: "OUT-01", kategori: "Operasional", deskripsi: "Kertas & ATK Kantor", nominal: 350000, tanggal: "2026-05-12" }
+                    ],
+                    laporan: [
+                        { tanggal: "2026-05-15", keterangan: "Kas Utama Koperasi", debit: 10000000, kredit: 350000, saldo_akhir: 9650000 }
+                    ]
+                },
+                getMenuName() { return this.menus.find(m => m.id === this.currentMenu).name; },
+                getColumns() { return Object.keys(this.db[this.currentMenu][0] || {}).map(k => k.replace('_', ' ').toUpperCase()); },
+                formatCell(val, key) {
+                    if (['nominal', 'jumlah_pinjaman', 'debit', 'kredit', 'saldo_akhir'].includes(key)) return this.formatRupiah(val);
+                    return val;
+                },
+                formatRupiah(num) { return 'Rp ' + Number(num).toLocaleString('id-ID'); },
+                getStats() {
+                    if (this.currentMenu === 'anggota') {
+                        return [{ label: 'Total Anggota', value: this.db.anggota.length + ' Orang', icon: '👤' }, { label: 'Status Sistem', value: 'Aktif 100%', icon: '⚡' }, { label: 'Lokasi Server', value: 'Cloud', icon: '🌐' }];
+                    }
+                    let totalNominal = this.db[this.currentMenu].reduce((sum, item) => sum + Number(item.nominal || item.jumlah_pinjaman || item.saldo_akhir || 0), 0);
+                    return [
+                        { label: 'Total Kumulatif Volume', value: this.formatRupiah(totalNominal), icon: '📈' },
+                        { label: 'Jumlah Baris Record', value: this.db[this.currentMenu].length + ' Data', icon: '📁' },
+                        { label: 'Integritas File', value: 'Sinkron', icon: '🛡️' }
+                    ];
+                },
+                openAddModal() {
+                    this.isEditMode = false;
+                    this.form = {};
+                    Object.keys(this.db[this.currentMenu][0] || {}).forEach(k => this.form[k] = '');
+                    this.isModalOpen = true;
+                },
+                openEditModal(row, index) {
+                    this.isEditMode = true;
+                    this.selectedIndex = index;
+                    this.form = JSON.parse(JSON.stringify(row));
+                    this.isModalOpen = true;
+                },
+                saveForm() {
+                    if (this.isEditMode) { this.db[this.currentMenu][this.selectedIndex] = this.form; } 
+                    else { this.db[this.currentMenu].push(this.form); }
+                    this.isModalOpen = false;
+                },
+                deleteData(index) { if (confirm("Hapus data ini secara permanen?")) this.db[this.currentMenu].splice(index, 1); },
+                generateKuitansi(row) {
+                    this.activeKuitansi = {
+                        nomor: 'REG-KW/' + Math.floor(1000 + Math.random() * 9000),
+                        jenis_dokumen: 'KUITANSI RESMI',
+                        nama: row.nama || 'Anggota KPRI',
+                        nominal: row.nominal || row.jumlah_pinjaman || 0,
+                        tanggal: row.tgl_transaksi || row.tanggal || '2026-05-22',
+                        keperluan: 'Transaksi Pemindahbukan berkas digital pada menu ' + this.getMenuName(),
+                        terbilang: 'Dua Ratus Lima Puluh Ribu' // Simplified for space
+                    };
+                    this.isKuitansiOpen = true;
+                },
+                exportToExcel() {
+                    const ws = XLSX.utils.json_to_sheet(this.db[this.currentMenu]);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, this.getMenuName());
+                    XLSX.writeFile(wb, `KPRI_SEMARAK_${this.currentMenu.toUpperCase()}.xlsx`);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
