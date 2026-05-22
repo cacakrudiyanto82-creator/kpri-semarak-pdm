@@ -240,10 +240,23 @@
                         nama: row.nama || 'Anggota KPRI',
                         nominal: row.nominal || row.jumlah_pinjaman || 0,
                         tanggal: row.tgl_transaksi || row.tanggal || '2026-05-22',
-                        keperluan: 'Transaksi Pemindahbukan berkas digital pada menu ' + this.getMenuName(),
-                        terbilang: 'Dua Ratus Lima Puluh Ribu'
+                        keperluan: 'Transaksi Pemindahbukuan berkas digital pada menu ' + this.getMenuName(),
+                        terbilang: this.angkaKeTerbilang(row.nominal || row.jumlah_pinjaman || 0)
                     };
                     this.isKuitansiOpen = true;
+                },
+                angkaKeTerbilang(nilai) {
+                    let bilangan = ["", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh", "Sebelas"];
+                    let utama = Math.floor(nilai);
+                    if (utama < 12) return bilangan[utama];
+                    else if (utama < 20) return this.angkaKeTerbilang(utama - 10) + " Belas";
+                    else if (utama < 100) return this.angkaKeTerbilang(Math.floor(utama / 10)) + " Puluh " + this.angkaKeTerbilang(utama % 10);
+                    else if (utama < 200) return "Seratus " + this.angkaKeTerbilang(utama - 100);
+                    else if (utama < 1000) return this.angkaKeTerbilang(Math.floor(utama / 100)) + " Ratus " + this.angkaKeTerbilang(utama % 100);
+                    else if (utama < 2000) return "Seribu " + this.angkaKeTerbilang(utama - 1000);
+                    else if (utama < 1000000) return this.angkaKeTerbilang(Math.floor(utama / 1000)) + " Ribu " + this.angkaKeTerbilang(utama % 1000);
+                    else if (utama < 1000000000) return this.angkaKeTerbilang(Math.floor(utama / 1000000)) + " Juta " + this.angkaKeTerbilang(utama % 1000000);
+                    return "";
                 },
                 exportToExcel() {
                     const ws = XLSX.utils.json_to_sheet(this.db[this.currentMenu]);
