@@ -177,8 +177,8 @@
                 ],
                 db: {
                     anggota: [
-                        { id_anggota: "A001", nama: "Drs. H. Ahmad Fauzi", nip: "19850312xxx", jabatan: "Ketua", status: "Aktif" },
-                        { id_anggota: "A002", nama: "Siti Rahma, S.E.", nip: "19890724xxx", jabatan: "Bendahara", status: "Aktif" }
+                        { id_anggota: "A001", nama: "Drs. H. Ahmad Fauzi", alamat: "Jl. Merdeka No. 12, Bengkulu", unit_kerja: "Dinas Pendidikan", nomor_telepon: "08123456xxxx" },
+                        { id_anggota: "A002", nama: "Siti Rahma, S.E.", alamat: "Jl. Sudirman Kaveling 4, Bengkulu", unit_kerja: "Bappeda", nomor_telepon: "08539876xxxx" }
                     ],
                     simpanan: [
                         { id_anggota: "A001", nama: "Drs. H. Ahmad Fauzi", jenis_simpanan: "SWB", nominal: 150000, tgl_transaksi: "2026-05-10", tgl_update: "2026-05-10" }
@@ -205,7 +205,7 @@
                 formatRupiah(num) { return 'Rp ' + Number(num).toLocaleString('id-ID'); },
                 getStats() {
                     if (this.currentMenu === 'anggota') {
-                        return [{ label: 'Total Anggota', value: this.db.anggota.length + ' Orang', icon: '👤' }, { label: 'Status Sistem', value: 'Aktif 100%', icon: '⚡' }, { label: 'Lokasi Server', value: 'Cloud', icon: '🌐' }];
+                        return [{ label: 'Total Anggota KPRI', value: this.db.anggota.length + ' Orang', icon: '👤' }, { label: 'Status Sistem', value: 'Aktif 100%', icon: '⚡' }, { label: 'Lokasi Server', value: 'Cloud Pages', icon: '🌐' }];
                     }
                     let totalNominal = this.db[this.currentMenu].reduce((sum, item) => sum + Number(item.nominal || item.jumlah_pinjaman || item.saldo_akhir || 0), 0);
                     return [
@@ -240,7 +240,7 @@
                         nominal: row.nominal || row.jumlah_pinjaman || 0,
                         tanggal: row.tgl_transaksi || row.tanggal || '2026-05-22',
                         keperluan: 'Transaksi Pemindahbukan berkas digital pada menu ' + this.getMenuName(),
-                        terbilang: 'Dua Ratus Lima Puluh Ribu' // Simplified for space
+                        terbilang: 'Dua Ratus Lima Puluh Ribu'
                     };
                     this.isKuitansiOpen = true;
                 },
