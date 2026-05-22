@@ -177,26 +177,44 @@
                     { id: 'laporan', name: 'Laporan Keuangan', icon: '📊' }
                 ],
                 db: {
-                    anggota: [
-                        { id_anggota: "A001", nama: "Drs. H. Ahmad Fauzi", alamat: "Jl. Raya Padamara No. 45", unit_kerja: "Koorwilcam Dindikbud Padamara", nomor_telepon: "08123456xxxx" },
-                        { id_anggota: "A002", nama: "Siti Rahma, S.E.", alamat: "Jl. Kenanga No. 12, Padamara", unit_kerja: "Puskesmas Padamara", nomor_telepon: "08539876xxxx" }
-                    ],
-                    simpanan: [
-                        { id_anggota: "A001", nama: "Drs. H. Ahmad Fauzi", jenis_simpanan: "SWB", nominal: 150000, tgl_transaksi: "2026-05-10", tgl_update: "2026-05-10" }
-                    ],
-                    pinjaman: [
-                        { id_pinjaman: "P01", id_anggota: "A002", nama: "Siti Rahma, S.E.", jumlah_pinjaman: 5000000, tenor: "10 Bulan", status: "Disetujui" }
-                    ],
-                    angsuran: [
-                        { id_angsuran: "ANG-01", id_anggota: "A002", nama: "Siti Rahma, S.E.", angsuran_ke: "1", nominal: 500000, tanggal: "2026-05-15" }
-                    ],
-                    pengeluaran: [
-                        { id_pengeluaran: "OUT-01", kategori: "Operasional", deskripsi: "Kertas & ATK Kantor", nominal: 350000, tanggal: "2026-05-12" }
-                    ],
-                    laporan: [
-                        { tanggal: "2026-05-15", keterangan: "Kas Utama Koperasi", debit: 10000000, kredit: 350000, saldo_akhir: 9650000 }
-                    ]
+                    anggota: [],
+                    simpanan: [],
+                    pinjaman: [],
+                    angsuran: [],
+                    pengeluaran: [],
+                    laporan: []
                 },
+                
+                init() {
+                    const localData = localStorage.getItem('kpri_semarak_db');
+                    if (localData) {
+                        this.db = JSON.parse(localData);
+                    } else {
+                        this.db = {
+                            anggota: [
+                                { id_anggota: "A001", nama: "Drs. H. Ahmad Fauzi", alamat: "Jl. Raya Padamara No. 45", unit_kerja: "Koorwilcam Dindikbud Padamara", nomor_telepon: "08123456xxxx" },
+                                { id_anggota: "A002", nama: "Siti Rahma, S.E.", alamat: "Jl. Kenanga No. 12, Padamara", unit_kerja: "Puskesmas Padamara", nomor_telepon: "08539876xxxx" }
+                            ],
+                            simpanan: [
+                                { id_anggota: "A001", nama: "Drs. H. Ahmad Fauzi", jenis_simpanan: "SWB", nominal: 150000, tgl_transaksi: "2026-05-10", tgl_update: "2026-05-10" }
+                            ],
+                            pinjaman: [
+                                { id_pinjaman: "P01", id_anggota: "A002", nama: "Siti Rahma, S.E.", jumlah_pinjaman: 5000000, tenor: "10 Bulan", status: "Disetujui" }
+                            ],
+                            angsuran: [
+                                { id_angsuran: "ANG-01", id_anggota: "A002", nama: "Siti Rahma, S.E.", angsuran_ke: "1", nominal: 500000, tanggal: "2026-05-15" }
+                            ],
+                            pengeluaran: [
+                                { id_pengeluaran: "OUT-01", kategori: "Operasional", deskripsi: "Kertas & ATK Kantor", nominal: 350000, tanggal: "2026-05-12" }
+                            ],
+                            laporan: [
+                                { tanggal: "2026-05-15", keterangan: "Kas Utama Koperasi", debit: 10000000, kredit: 350000, saldo_akhir: 9650000 }
+                            ]
+                        };
+                        localStorage.setItem('kpri_semarak_db', JSON.stringify(this.db));
+                    }
+                },
+
                 getMenuName() { return this.menus.find(m => m.id === this.currentMenu).name; },
                 getColumns() { return Object.keys(this.db[this.currentMenu][0] || {}).map(k => k.replace('_', ' ').toUpperCase()); },
                 formatCell(val, key) {
@@ -218,54 +236,4 @@
                 openAddModal() {
                     this.isEditMode = false;
                     this.form = {};
-                    Object.keys(this.db[this.currentMenu][0] || {}).forEach(k => this.form[k] = '');
-                    this.isModalOpen = true;
-                },
-                openEditModal(row, index) {
-                    this.isEditMode = true;
-                    this.selectedIndex = index;
-                    this.form = JSON.parse(JSON.stringify(row));
-                    this.isModalOpen = true;
-                },
-                saveForm() {
-                    if (this.isEditMode) { this.db[this.currentMenu][this.selectedIndex] = this.form; } 
-                    else { this.db[this.currentMenu].push(this.form); }
-                    this.isModalOpen = false;
-                },
-                deleteData(index) { if (confirm("Hapus data ini secara permanen?")) this.db[this.currentMenu].splice(index, 1); },
-                generateKuitansi(row) {
-                    this.activeKuitansi = {
-                        nomor: 'REG-KW/' + Math.floor(1000 + Math.random() * 9000),
-                        jenis_dokumen: 'KUITANSI RESMI',
-                        nama: row.nama || 'Anggota KPRI',
-                        nominal: row.nominal || row.jumlah_pinjaman || 0,
-                        tanggal: row.tgl_transaksi || row.tanggal || '2026-05-22',
-                        keperluan: 'Transaksi Pemindahbukuan berkas digital pada menu ' + this.getMenuName(),
-                        terbilang: this.angkaKeTerbilang(row.nominal || row.jumlah_pinjaman || 0)
-                    };
-                    this.isKuitansiOpen = true;
-                },
-                angkaKeTerbilang(nilai) {
-                    let bilangan = ["", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh", "Sebelas"];
-                    let utama = Math.floor(nilai);
-                    if (utama < 12) return bilangan[utama];
-                    else if (utama < 20) return this.angkaKeTerbilang(utama - 10) + " Belas";
-                    else if (utama < 100) return this.angkaKeTerbilang(Math.floor(utama / 10)) + " Puluh " + this.angkaKeTerbilang(utama % 10);
-                    else if (utama < 200) return "Seratus " + this.angkaKeTerbilang(utama - 100);
-                    else if (utama < 1000) return this.angkaKeTerbilang(Math.floor(utama / 100)) + " Ratus " + this.angkaKeTerbilang(utama % 100);
-                    else if (utama < 2000) return "Seribu " + this.angkaKeTerbilang(utama - 1000);
-                    else if (utama < 1000000) return this.angkaKeTerbilang(Math.floor(utama / 1000)) + " Ribu " + this.angkaKeTerbilang(utama % 1000);
-                    else if (utama < 1000000000) return this.angkaKeTerbilang(Math.floor(utama / 1000000)) + " Juta " + this.angkaKeTerbilang(utama % 1000000);
-                    return "";
-                },
-                exportToExcel() {
-                    const ws = XLSX.utils.json_to_sheet(this.db[this.currentMenu]);
-                    const wb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(wb, ws, this.getMenuName());
-                    XLSX.writeFile(wb, `KPRI_SEMARAK_${this.currentMenu.toUpperCase()}.xlsx`);
-                }
-            }
-        }
-    </script>
-</body>
-</html>
+                    Object.keys(this.db[this.currentMenu][0]
